@@ -1,0 +1,15 @@
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+startCommand        = "node server.js"
+healthcheckPath     = "/health"
+healthcheckTimeout  = 30
+restartPolicyType   = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Persistent volume for SQLite (Railway Hobby+ plan)
+# Free tier: remove this block and set DB_PATH=/tmp/obsidian.db
+# (data lost on restart, but sync_all.py re-fills it in seconds)
+[[volumes]]
+mountPath = "/data"
