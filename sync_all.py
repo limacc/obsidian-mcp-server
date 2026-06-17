@@ -96,7 +96,7 @@ def sync(files: list[dict], dry_run: bool) -> dict:
     for i in range(0, len(changed), BATCH_SIZE):
         batch = changed[i : i + BATCH_SIZE]
         payload = {"files": [{"path": f["path"], "content": f["content"]} for f in batch]}
-        resp = requests.post(f"{SERVER_URL}/sync", headers=HEADERS, json=payload, timeout=30)
+        resp = requests.post(f"{SERVER_URL}/sync?token={RELAY_SECRET}", headers=HEADERS, json=payload, timeout=30)
         resp.raise_for_status()
         result = resp.json()
         total_synced += result.get("synced", 0)
@@ -130,7 +130,7 @@ def watch_mode():
                 content = p.read_text(encoding="utf-8", errors="replace")
                 rel = p.relative_to(VAULT_ROOT).as_posix()
                 payload = {"files": [{"path": rel, "content": content}]}
-                resp = requests.post(f"{SERVER_URL}/sync", headers=HEADERS, json=payload, timeout=10)
+                resp = requests.post(f"{SERVER_URL}/sync?token={RELAY_SECRET}", headers=HEADERS, json=payload, timeout=10)
                 resp.raise_for_status()
                 r = resp.json()
                 if r.get("synced", 0):

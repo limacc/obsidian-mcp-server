@@ -180,8 +180,9 @@ app.use(express.json({ limit: '20mb' }));
 // Auth middleware
 const auth = (req, res, next) => {
   const via_bearer = req.headers.authorization === `Bearer ${TOKEN}`;
-  const via_custom = req.headers['x-relay-secret'] === TOKEN;
-  return (via_bearer || via_custom)
+  const via_custom  = req.headers['x-relay-secret'] === TOKEN;
+  const via_query   = req.query.token === TOKEN;
+  return (via_bearer || via_custom || via_query)
     ? next()
     : res.status(401).json({ error: 'Unauthorized' });
 };
