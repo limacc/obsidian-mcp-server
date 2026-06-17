@@ -178,10 +178,13 @@ const app = express();
 app.use(express.json({ limit: '20mb' }));
 
 // Auth middleware
-const auth = (req, res, next) =>
-  req.headers.authorization === `Bearer ${TOKEN}`
+const auth = (req, res, next) => {
+  const via_bearer = req.headers.authorization === `Bearer ${TOKEN}`;
+  const via_custom = req.headers['x-relay-secret'] === TOKEN;
+  return (via_bearer || via_custom)
     ? next()
     : res.status(401).json({ error: 'Unauthorized' });
+};
 
 // ── Health (public) ───────────────────────────────────────────────────────────
 app.get('/health', (_req, res) =>

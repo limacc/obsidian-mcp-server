@@ -26,16 +26,16 @@ from pathlib import Path
 import requests
 
 # ── CONFIG (환경에 맞게 수정) ─────────────────────────────────────────────────
-VAULT_ROOT   = Path(r"G:\내 드라이브\A3. Obsidan_G")
-SERVER_URL   = "https://<your-app>.railway.app"   # ← Railway 배포 후 URL로 교체
-RELAY_SECRET = "your-strong-secret-token-here"    # ← .env.example의 RELAY_SECRET과 동일
+VAULT_ROOT   = Path(r"G:\내 드라이브")             # ← 구글드라이브 전체 (옵시디언 한정 불필요)
+SERVER_URL   = "https://obsidian-mcp-server-production-7457.up.railway.app"   # ← Railway 배포 후 URL로 교체
+RELAY_SECRET = "bfc4b14e7a2812f80a8f1cae425393ca7c1d6f6dbf703bfa128aed6eae2a43a1"    # ← .env.example의 RELAY_SECRET과 동일
 BATCH_SIZE   = 50    # 한 번에 전송할 파일 수 (Railway 무료: 50 이하 권장)
 CACHE_FILE   = Path(r"D:\workspace\.obsidian_sync_cache.json")  # 체크섬 캐시 (G: 금지)
-EXTENSIONS   = {".md", ".txt", ".yaml", ".json"}  # 동기화할 확장자
+EXTENSIONS   = {".md", ".txt", ".yaml", ".json", ".py", ".r", ".js", ".sh", ".toml", ".csv"}  # 텍스트 계열 전부
 # ─────────────────────────────────────────────────────────────────────────────
 
 HEADERS = {
-    "Authorization": f"Bearer {RELAY_SECRET}",
+    "X-Relay-Secret": RELAY_SECRET,
     "Content-Type":  "application/json",
 }
 
