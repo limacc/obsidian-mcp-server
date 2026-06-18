@@ -257,6 +257,25 @@ app.get('/api/search', auth, (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
+// ── FTS rebuild on start
+try {
+  db.exec("INSERT INTO fts(fts) VALUES('rebuild');");
+  console.log('FTS index rebuilt');
+} catch(e) {
+  console.log('FTS rebuild skipped:', e.message);
+}
+
+// ── Reindex endpoint (POST /api/reindex)
+app.post('/api/reindex', auth, (req, res) => {
+  try {
+    db.exec("INSERT INTO fts(fts) VALUES('rebuild');");
+    const n = db.prepare('SELECT COUNT(*) AS n FROM files').get().n;
+    res.json({ ok: true, files: n });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🧠 Obsidian MCP Server`);
   console.log(`   port  : ${PORT}`);
