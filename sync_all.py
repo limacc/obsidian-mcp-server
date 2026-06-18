@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""sync_all.py — streaming generator 방식: 파일 발견 즉시 전송 (배치 대기 없음)"""
-import json, hashlib, argparse, time
+"""sync_all.py — streaming generator. 서버 files=0이면 캐시 자동 초기화."""
+import json, hashlib
 from pathlib import Path
 import requests
 
@@ -40,7 +40,7 @@ def send_batch(batch, cache):
                 cache[item["path"]] = item["hash"]
             return len(batch), 0
         else:
-            print(f"  서버 오류 {r.status_code}: {r.text[:100]}")
+            print(f"  서버 오류 {r.status_code}: {r.text[:80]}")
             return 0, len(batch)
     except Exception as e:
         print(f"  전송 오류: {e}")
@@ -51,11 +51,18 @@ def main():
     try:
         r = requests.get(f"{SERVER_URL}/health", timeout=5)
         info = r.json()
-        print(f"서버: OK  (현재 파일 수: {info.get('files','?')})\n")
+        server_files = info.get("files", -1)
+        print(f"서버: OK  (현재 파일 수: {server_files})\n")
     except Exception as e:
         print(f"서버 연결 실패: {e}"); return
 
+    # 서버 DB가 리셋됐으면 캐시 자동 초기화
     cache = load_cache()
+    if server_files == 0 and len(cache) > 0:
+        print(f"  서버 DB 리셋 감지 (files=0, 캐시={len(cache)}개) -> 캐시 초기화 후 전체 재동기화")
+        cache = {}
+        save_cache(cache)
+
     batch = []
     batch_num = 0
     total_synced = 0
@@ -96,7 +103,6 @@ def main():
         except Exception:
             continue
 
-    # 마지막 잔여 배치
     if batch:
         synced, _ = send_batch(batch, cache)
         total_synced += synced
@@ -104,7 +110,7 @@ def main():
         print(f"배치 {batch_num} (마지막): synced={synced}")
         save_cache(cache)
 
-    print(f"\n완료: 총 {total_synced}개 동기화, {total_skipped}개 스킵 (전체 스캔 {scanned}개)")
+    print(f"\n완료: 총 {total_synced}개 동기화, {total_skipped}개 스킵 (스캔 {scanned}개)")
 
 if __name__ == "__main__":
     main()
