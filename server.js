@@ -48,6 +48,15 @@ db.exec(`
       content_rowid = id
     );
 
+  -- Write queue: AI-written files pending reverse-sync to Google Drive
+  CREATE TABLE IF NOT EXISTS write_queue (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_path  TEXT NOT NULL,
+    content    TEXT NOT NULL,
+    written_at TEXT DEFAULT (datetime('now')),
+    synced     INTEGER DEFAULT 0
+  );
+
   -- Keep FTS in sync with base table
   CREATE TRIGGER IF NOT EXISTS trg_ai AFTER INSERT ON files BEGIN
     INSERT INTO fts(rowid, file_path, content)
@@ -243,6 +252,37 @@ app.get('/api/map', auth, (_req, res) => {
 
 app.get('/api/files', auth, (req, res) => {
   res.json(q.list.all(`${req.query.folder ?? ''}%`));
+});
+
+// ── Write endpoint (AI → DB → MiniPC reverse-sync)
+app.post('/api/write', auth, (req, res) => {
+  const { path: fp, content } = req.body ?? {};
+  if (!fp || content === undefined)
+    return res.status(400).json({ error: 'Missing path or content' });
+
+  const hash = crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
+  db.prepare(`
+    INSERT INTO files (file_path, content, checksum, synced_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(file_path) DO UPDATE SET
+      content=excluded.content, checksum=excluded.checksum, synced_at=excluded.synced_at
+  `).run(fp, content, hash);
+  db.prepare(`INSERT INTO write_queue (file_path, content) VALUES (?, ?)`).run(fp, content);
+  res.json({ ok: true, path: fp });
+});
+
+// ── Queue endpoint (MiniPC polls this to reverse-sync)
+app.get('/api/queue', auth, (req, res) => {
+  const rows = db.prepare('SELECT id, file_path, content FROM write_queue WHERE synced=0 ORDER BY id').all();
+  res.json({ pending: rows });
+});
+
+app.post('/api/queue/ack', auth, (req, res) => {
+  const { ids } = req.body ?? {};
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'Missing ids[]' });
+  const stmt = db.prepare('UPDATE write_queue SET synced=1 WHERE id=?');
+  ids.forEach(id => stmt.run(id));
+  res.json({ ok: true, acked: ids.length });
 });
 
 // Dynamic segment — must come after /api/files
